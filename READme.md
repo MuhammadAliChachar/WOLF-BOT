@@ -39,15 +39,15 @@
 
 **DOWNLOAD ZIP**
 <br>
-<a href="https://github.com/sil3nt-wolf/silentwolf/archive/refs/heads/main.zip" target="_blank">
+<a href="https://github.com/Wwolvarexx/silentwolf/archive/refs/heads/main.zip" target="_blank">
   <img src="https://img.shields.io/badge/DOWNLOAD%20ZIP-100000?style=for-the-badge&logo=scan&logoColor=white&labelColor=darkorange&color=darkgreen" alt="Download zip"/>
 </a>
 
 <br>
 
-![GitHub stars](https://img.shields.io/github/stars/sil3nt-wolf/silentwolf?style=for-the-badge&color=darkgreen)
-![GitHub forks](https://img.shields.io/github/forks/sil3nt-wolf/silentwolf?style=for-the-badge&color=darkgreen)
-![GitHub repo size](https://img.shields.io/github/repo-size/sil3nt-wolf/silentwolf?style=for-the-badge&color=darkgreen)
+![GitHub stars](https://img.shields.io/github/stars/Wwolvarexx/silentwolf?style=for-the-badge&color=darkgreen)
+![GitHub forks](https://img.shields.io/github/forks/Wwolvarexx/silentwolf?style=for-the-badge&color=darkgreen)
+![GitHub repo size](https://img.shields.io/github/repo-size/Wwolvarexx/silentwolf?style=for-the-badge&color=darkgreen)
 
 </div>
 
@@ -118,7 +118,7 @@ WOLFBOT comes packed with a wide range of features:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/sil3nt-wolf/silentwolf.git
+git clone https://github.com/Wwolvarexx/silentwolf.git
 cd silentwolf
 ```
 
@@ -175,8 +175,8 @@ WOLFBOT runs on all major platforms:
 
 - 🌍 [Deploy WOLFBOT](https://inspiring-genie-ebae09.netlify.app/)
 - 🔑 [Get Session Pair Code](https://7-w.vercel.app/wolf.html)
-- 📦 [Download ZIP](https://github.com/sil3nt-wolf/silentwolf/archive/refs/heads/main.zip)
-- 🐙 [GitHub Repository](https://github.com/sil3nt-wolf/silentwolf)
+- 📦 [Download ZIP](https://github.com/Wwolvarexx/silentwolf/archive/refs/heads/main.zip)
+- 🐙 [GitHub Repository](https://github.com/Wwolvarexx/silentwolf)
 
 ---
 
