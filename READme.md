@@ -45,9 +45,9 @@
 
 <br>
 
-![GitHub stars](https://img.shields.io/github/stars/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen)
-![GitHub forks](https://img.shields.io/github/forks/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen)
-![GitHub repo size](https://img.shields.io/github/repo-size/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen)
+[![GitHub stars](https://img.shields.io/github/stars/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen&cacheSeconds=300&v=wolf-bot)](https://github.com/wolvarex-254/WOLF-BOT/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen&cacheSeconds=300&v=wolf-bot)](https://github.com/wolvarex-254/WOLF-BOT/forks)
+[![GitHub repo size](https://img.shields.io/github/repo-size/wolvarex-254/WOLF-BOT?style=for-the-badge&color=darkgreen&cacheSeconds=300&v=wolf-bot)](https://github.com/wolvarex-254/WOLF-BOT)
 
 </div>
 
