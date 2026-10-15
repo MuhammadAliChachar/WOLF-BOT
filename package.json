@@ -13,13 +13,13 @@
     "monitor",
     "session-protection"
   ],
-  "homepage": "https://github.com/WOLVAREX/silentwolf#readme",
+  "homepage": "https://github.com/wolvarex-254/WOLF-BOT#readme",
   "bugs": {
-    "url": "https://github.com/WOLVAREX/silentwolf/issues"
+    "url": "https://github.com/wolvarex-254/WOLF-BOT/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WOLVAREX/silentwolf.git"
+    "url": "git+https://github.com/wolvarex-254/WOLF-BOT.git"
   },
   "license": "MIT",
   "author": "WOLVAREX",
