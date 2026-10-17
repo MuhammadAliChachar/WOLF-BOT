@@ -23,7 +23,7 @@
 
 **DEPLOY WOLFBOT**
 <br>
-<a href="https://7-w.vercel.app/wolfbot.html" target="_blank">
+<a href="https://courageous-alpaca-0e1682.netlify.app/dash.html" target="_blank">
   <img src="https://img.shields.io/badge/DEPLOY%20WOLFBOT-100000?style=for-the-badge&logo=heroku&logoColor=white&labelColor=darkgreen&color=darkgreen" alt="DEPLOY WOLFBOT"/>
 </a>
 
