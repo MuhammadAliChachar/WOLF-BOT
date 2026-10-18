@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import Module from 'module';
+import { fileURLToPath, pathToFileURL } from 'url';
 import cp from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -222,6 +223,35 @@ process.chdir = function guardedChdir(directory) {
   originalChdir(resolved);
   runtimeDir = resolved;
   restore(resolved);
+};
+
+// Recent wolfsocket releases contain top-level await. The obfuscated fetcher
+// still starts the downloaded ESM entry with require(), which Node rejects with
+// ERR_REQUIRE_ASYNC_MODULE. Fall back to import() only for that downloaded
+// runtime entry; all ordinary CommonJS loading keeps its original behaviour.
+const originalModuleLoad = Module._load;
+Module._load = function guardedModuleLoad(request, parent, isMain) {
+  try {
+    return originalModuleLoad.call(this, request, parent, isMain);
+  } catch (error) {
+    if (error?.code !== 'ERR_REQUIRE_ASYNC_MODULE' || !runtimeDir) throw error;
+
+    let resolved;
+    try { resolved = Module._resolveFilename(request, parent, isMain); }
+    catch { throw error; }
+
+    const runtimeRoot = path.resolve(runtimeDir);
+    const target = path.resolve(String(resolved));
+    const isRuntimeEntry = target === path.join(runtimeRoot, 'index.js');
+    if (!isRuntimeEntry) throw error;
+
+    log('starting downloaded ESM bot with dynamic import');
+    import(pathToFileURL(target).href).catch(importError => {
+      console.error('[WOLF TECH] Failed to start downloaded bot:', importError);
+      process.exitCode = 1;
+    });
+    return {};
+  }
 };
 
 function saveNow() {
