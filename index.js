@@ -225,6 +225,41 @@ process.chdir = function guardedChdir(directory) {
   restore(resolved);
 };
 
+// Wrap the require function created by the obfuscated fetcher. Node versions
+// used by Heroku can reject an ESM graph with top-level await before our
+// Module._load fallback is reached, so detect the downloaded entry first and
+// start that one file with import(). All other requires remain synchronous.
+globalThis.__wolfCreateRequire = function wolfCreateRequire(filename) {
+  const runtimeRequire = Module.createRequire(filename);
+
+  function guardedRequire(request) {
+    if (runtimeDir) {
+      let resolved;
+      try { resolved = runtimeRequire.resolve(request); }
+      catch { return runtimeRequire(request); }
+
+      const runtimeRoot = path.resolve(runtimeDir);
+      const target = path.resolve(String(resolved));
+      if (target === path.join(runtimeRoot, 'index.js')) {
+        log('starting downloaded ESM bot with dynamic import');
+        import(pathToFileURL(target).href).catch(importError => {
+          console.error('[WOLF TECH] Failed to start downloaded bot:', importError);
+          process.exitCode = 1;
+        });
+        return {};
+      }
+    }
+
+    return runtimeRequire(request);
+  }
+
+  guardedRequire.resolve = runtimeRequire.resolve;
+  guardedRequire.cache = runtimeRequire.cache;
+  guardedRequire.extensions = runtimeRequire.extensions;
+  guardedRequire.main = runtimeRequire.main;
+  return guardedRequire;
+};
+
 // Recent wolfsocket releases contain top-level await. The obfuscated fetcher
 // still starts the downloaded ESM entry with require(), which Node rejects with
 // ERR_REQUIRE_ASYNC_MODULE. Fall back to import() only for that downloaded
@@ -279,7 +314,7 @@ if (!fs.existsSync(wolfPath)) {
 const botSource = fs.readFileSync(wolfPath, 'utf8');
 const patchedSource = botSource.replace(
   /createRequire\(\[([^\]]+)\]/g,
-  'createRequire(import.meta.url'
+  'globalThis.__wolfCreateRequire(import.meta.url'
 );
 const temporaryLoader = path.join(__dirname, '.bot_run.js');
 fs.writeFileSync(temporaryLoader, patchedSource);
