@@ -33,29 +33,9 @@
       "value": "",
       "required": false
     },
-    "BOT_PREFIX": {
-      "description": "OPTIONAL: Command prefix for the bot (e.g. . or ! or ?). Defaults to '.' if not set. Automatically updated when you use .setprefix.",
-      "value": ".",
-      "required": false
-    },
     "BOT_MODE": {
       "description": "OPTIONAL: Bot operating mode. Options: public, private, group, solo, sudo, super, buttons, channel. Defaults to 'public'. Automatically updated when you use .setmode.",
       "value": "public",
-      "required": false
-    },
-    "BOT_NAME": {
-      "description": "OPTIONAL: Display name for the bot shown in menus and messages. Defaults to 'WOLFBOT'. Automatically updated when you use .setbotname.",
-      "value": "WOLFBOT",
-      "required": false
-    },
-    "BOT_TIMEZONE": {
-      "description": "OPTIONAL: Timezone for time/date display in menus (e.g. Africa/Lagos, Asia/Kolkata, America/New_York). Defaults to UTC. Automatically updated when you use .settimezone.",
-      "value": "UTC",
-      "required": false
-    },
-    "OWNER_NUMBER": {
-      "description": "OPTIONAL: Your WhatsApp number in international format without + (e.g. 2348012345678). Used to scope settings to your bot instance and grant owner privileges.",
-      "value": "",
       "required": false
     },
     "MONGODB_URI": {
