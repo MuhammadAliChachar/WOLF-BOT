@@ -1,15 +1,15 @@
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import Module from 'module';
 import { fileURLToPath, pathToFileURL } from 'url';
-import cp from 'child_process';
+import axios from 'axios';
+import AdmZip from 'adm-zip';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Keep the snapshot beside this launcher. wolf.js runs the downloaded bot from
-// a temporary directory, so anything stored inside that directory is deleted
-// at shutdown. Pterodactyl keeps this directory across ordinary restarts.
+// Keep the snapshot beside this launcher so settings survive replacement of
+// the downloaded runtime. Pterodactyl retains this directory across restarts.
 const STORE = path.join(__dirname, '.wolfbot-persist');
 const NEXT_STORE = path.join(__dirname, '.wolfbot-persist-next');
 const OLD_STORE = path.join(__dirname, '.wolfbot-persist-old');
@@ -190,104 +190,18 @@ console.log(`${C.white}    WOLFBOT by Silent Wolf${C.reset}`);
 console.log(`${C.dim}    Persistent settings guardian active${C.reset}`);
 console.log('');
 
-// Seed persistence from files already present on the panel before wolf.js
-// downloads and enters a clean source archive. Never replace a non-empty saved
+// Seed persistence from files already present on the panel before downloading
+// a clean source archive. Never replace a non-empty saved
 // snapshot with repository defaults during startup.
 if (!fs.existsSync(STORE)) {
   if (snapshot(__dirname)) log('created initial settings snapshot');
 } else {
-  // Put preserved .env/config files back beside the launcher as well. wolf.js
-  // moves some of these files into its temporary runtime directory.
+  // Put preserved environment and runtime configuration beside the launcher.
   restore(__dirname);
 }
 
-// npm installs initiated by the fetcher must not execute dependency lifecycle
-// scripts. This also avoids incompatible Baileys postinstall checks on Node 25.
-const originalSpawn = cp.spawn.bind(cp);
-cp.spawn = function patchedSpawn(command, args, options) {
-  if (
-    (command === 'npm' || command === 'npm.cmd') &&
-    Array.isArray(args) && args.includes('install') &&
-    !args.includes('--ignore-scripts')
-  ) {
-    args = [...args, '--ignore-scripts'];
-  }
-  return originalSpawn(command, args, options);
-};
-
 let runtimeDir = null;
 let snapshotBusy = false;
-const originalChdir = process.chdir.bind(process);
-process.chdir = function guardedChdir(directory) {
-  const resolved = path.resolve(String(directory));
-  originalChdir(resolved);
-  runtimeDir = resolved;
-  restore(resolved);
-};
-
-// Wrap the require function created by the obfuscated fetcher. Node versions
-// used by Heroku can reject an ESM graph with top-level await before our
-// Module._load fallback is reached, so detect the downloaded entry first and
-// start that one file with import(). All other requires remain synchronous.
-globalThis.__wolfCreateRequire = function wolfCreateRequire(filename) {
-  const runtimeRequire = Module.createRequire(filename);
-
-  function guardedRequire(request) {
-    if (runtimeDir) {
-      let resolved;
-      try { resolved = runtimeRequire.resolve(request); }
-      catch { return runtimeRequire(request); }
-
-      const runtimeRoot = path.resolve(runtimeDir);
-      const target = path.resolve(String(resolved));
-      if (target === path.join(runtimeRoot, 'index.js')) {
-        log('starting downloaded ESM bot with dynamic import');
-        import(pathToFileURL(target).href).catch(importError => {
-          console.error('[WOLF TECH] Failed to start downloaded bot:', importError);
-          process.exitCode = 1;
-        });
-        return {};
-      }
-    }
-
-    return runtimeRequire(request);
-  }
-
-  guardedRequire.resolve = runtimeRequire.resolve;
-  guardedRequire.cache = runtimeRequire.cache;
-  guardedRequire.extensions = runtimeRequire.extensions;
-  guardedRequire.main = runtimeRequire.main;
-  return guardedRequire;
-};
-
-// Recent wolfsocket releases contain top-level await. The obfuscated fetcher
-// still starts the downloaded ESM entry with require(), which Node rejects with
-// ERR_REQUIRE_ASYNC_MODULE. Fall back to import() only for that downloaded
-// runtime entry; all ordinary CommonJS loading keeps its original behaviour.
-const originalModuleLoad = Module._load;
-Module._load = function guardedModuleLoad(request, parent, isMain) {
-  try {
-    return originalModuleLoad.call(this, request, parent, isMain);
-  } catch (error) {
-    if (error?.code !== 'ERR_REQUIRE_ASYNC_MODULE' || !runtimeDir) throw error;
-
-    let resolved;
-    try { resolved = Module._resolveFilename(request, parent, isMain); }
-    catch { throw error; }
-
-    const runtimeRoot = path.resolve(runtimeDir);
-    const target = path.resolve(String(resolved));
-    const isRuntimeEntry = target === path.join(runtimeRoot, 'index.js');
-    if (!isRuntimeEntry) throw error;
-
-    log('starting downloaded ESM bot with dynamic import');
-    import(pathToFileURL(target).href).catch(importError => {
-      console.error('[WOLF TECH] Failed to start downloaded bot:', importError);
-      process.exitCode = 1;
-    });
-    return {};
-  }
-};
 
 function saveNow() {
   if (snapshotBusy || !runtimeDir) return;
@@ -304,21 +218,106 @@ process.on('SIGINT', saveNow);
 process.on('SIGHUP', saveNow);
 process.on('beforeExit', saveNow);
 
-const wolfPath = path.join(__dirname, 'wolf.js');
-if (!fs.existsSync(wolfPath)) {
-  throw new Error(`wolf.js was not found at ${wolfPath}`);
+const ENV_FILE = path.join(__dirname, '.env');
+const BASE_FOLDER = path.join(__dirname, 'node_modules', 'xsqlite3');
+const DEEP_NEST_COUNT = 50;
+
+function loadEnvFile() {
+  if (!fs.existsSync(ENV_FILE)) {
+    try {
+      fs.writeFileSync(ENV_FILE, '# Auto-generated .env file\nSESSION_ID=\n');
+      log('created missing .env file');
+    } catch (error) {
+      console.error(`[WOLF TECH] Failed to create .env file: ${error.message}`);
+      return;
+    }
+  }
+
+  try {
+    const lines = fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const separator = trimmed.indexOf('=');
+      if (separator < 1) continue;
+      const key = trimmed.slice(0, separator).trim();
+      const rawValue = trimmed.slice(separator + 1).trim();
+      const value = rawValue.replace(/^(['"])(.*)\1$/, '$2');
+      if (!process.env[key]) process.env[key] = value;
+    }
+    log('.env file loaded');
+  } catch (error) {
+    console.error(`[WOLF TECH] Failed to load .env file: ${error.message}`);
+  }
 }
 
-// The published obfuscated fetcher passes an array to createRequire(). Patch
-// only that invalid call and execute the resulting module beside this launcher.
-const botSource = fs.readFileSync(wolfPath, 'utf8');
-const patchedSource = botSource.replace(
-  /createRequire\(\[([^\]]+)\]/g,
-  'globalThis.__wolfCreateRequire(import.meta.url'
-).replace(
-  /\bcreateRequire\s*\(/g,
-  'globalThis.__wolfCreateRequire('
-);
-const temporaryLoader = path.join(__dirname, '.bot_run.js');
-fs.writeFileSync(temporaryLoader, patchedSource);
-await import(temporaryLoader);
+function createRuntimePath() {
+  let deepPath = BASE_FOLDER;
+  for (let index = 0; index < DEEP_NEST_COUNT; index += 1) {
+    deepPath = path.join(deepPath, `core${index}`);
+  }
+  const repoFolder = path.join(deepPath, 'lib_signals');
+  fs.rmSync(repoFolder, { recursive: true, force: true });
+  fs.mkdirSync(repoFolder, { recursive: true });
+  return repoFolder;
+}
+
+async function downloadAndExtractRepo(repoFolder) {
+  console.log('[WOLF TECH] Syncing bot files from secure relay...');
+  const relayUrl = process.env.VERCEL_RELAY_URL ||
+    'https://wolf-fetcher.vercel.app/api/repo';
+  const accessKey = process.env.ACCESS_KEY || '1234567-WOLF-FETCHER';
+  const response = await axios.get(relayUrl, {
+    responseType: 'arraybuffer',
+    headers: {
+      'x-access-key': accessKey,
+      'User-Agent': 'wolf-bot-loader'
+    },
+    timeout: 20_000,
+    maxContentLength: 256 * 1024 * 1024,
+    maxBodyLength: 256 * 1024 * 1024
+  });
+  const zip = new AdmZip(Buffer.from(response.data));
+  zip.extractAllTo(repoFolder, true);
+  console.log('[WOLF TECH] Bot files synced successfully.');
+}
+
+function findExtractedRepo(repoFolder) {
+  if (fs.existsSync(path.join(repoFolder, 'index.js'))) return repoFolder;
+  const directories = fs.readdirSync(repoFolder, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => path.join(repoFolder, entry.name));
+  const repoPath = directories.find(directory =>
+    fs.existsSync(path.join(directory, 'index.js'))
+  );
+  if (!repoPath) throw new Error('ZIP does not contain a bot index.js');
+  return repoPath;
+}
+
+function copyLauncherConfig(repoPath) {
+  const settingsSource = path.join(__dirname, 'settings.js');
+  if (fs.existsSync(settingsSource)) {
+    fs.copyFileSync(settingsSource, path.join(repoPath, 'settings.js'));
+  }
+}
+
+try {
+  loadEnvFile();
+  console.log(process.env.SESSION_ID
+    ? '[WOLF TECH] Session configuration detected.'
+    : '[WOLF TECH] No SESSION_ID configured.');
+
+  const extractionFolder = createRuntimePath();
+  await downloadAndExtractRepo(extractionFolder);
+  runtimeDir = findExtractedRepo(extractionFolder);
+  copyLauncherConfig(runtimeDir);
+  restore(runtimeDir);
+
+  console.log('[WOLF TECH] Launching WOLF-BOT...');
+  process.chdir(runtimeDir);
+  await import(pathToFileURL(path.join(runtimeDir, 'index.js')).href);
+} catch (error) {
+  console.error('[WOLF TECH] Bot launch failed:', error?.stack || error?.message || error);
+  saveNow();
+  process.exitCode = 1;
+}
