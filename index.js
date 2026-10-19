@@ -315,6 +315,9 @@ const botSource = fs.readFileSync(wolfPath, 'utf8');
 const patchedSource = botSource.replace(
   /createRequire\(\[([^\]]+)\]/g,
   'globalThis.__wolfCreateRequire(import.meta.url'
+).replace(
+  /\bcreateRequire\s*\(/g,
+  'globalThis.__wolfCreateRequire('
 );
 const temporaryLoader = path.join(__dirname, '.bot_run.js');
 fs.writeFileSync(temporaryLoader, patchedSource);
